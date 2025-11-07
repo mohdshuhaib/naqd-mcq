@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>اختبار النقد والعروض</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <!-- Google Font (Tajawal) for better Arabic rendering -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,11 +14,13 @@
         /* Apply the Arabic font */
         body {
             font-family: 'Tajawal', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
         }
         /* Style for question text to respect newlines from the PDF */
         #question-text {
             white-space: pre-line;
         }
+
         /* Custom styles for correct/incorrect answers */
         .correct-answer {
             background-color: #d1fae5 !important; /* Tailwind green-100 */
@@ -32,39 +34,70 @@
             color: #991b1b !important; /* Tailwind red-800 */
             font-weight: 700;
         }
+
+        /* Styles for modal question grid */
+        .q-correct {
+            background-color: #d1fae5; /* green-100 */
+            color: #065f46; /* green-800 */
+            font-weight: 700;
+        }
+        .q-incorrect {
+            background-color: #fee2e2; /* red-100 */
+            color: #991b1b; /* red-800 */
+        }
+        .q-unattempted {
+            background-color: #f3f4f6; /* gray-100 */
+            color: #374151; /* gray-700 */
+        }
+
         /* Disabled button state */
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
         .option-btn:disabled {
-            opacity: 0.8;
             cursor: not-allowed;
         }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="flex items-center justify-center min-h-screen p-4">
 
-    <div class="container mx-auto p-4 min-h-screen flex items-center justify-center">
-        
+    <div class="container mx-auto max-w-3xl">
+
         <!-- Quiz Container -->
-        <div id="quiz-container" class="bg-white w-full max-w-3xl shadow-2xl rounded-2xl p-6 md:p-10">
+        <div id="quiz-container" class="bg-white w-full shadow-2xl rounded-2xl overflow-hidden">
             <!-- Header: Title and Progress -->
-            <div id="header" class="mb-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                <h1 class="text-3xl font-bold text-gray-800">اختبار النقد والعروض</h1>
-                <div id="progress" class="text-lg text-gray-600 font-medium shrink-0"></div>
+            <div id="header" class="p-6 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                    <h1 class="text-3xl font-bold">اختبار النقد والعروض</h1>
+                    <div id="progress" class="text-lg font-medium shrink-0 bg-blue-500 bg-opacity-50 px-3 py-1 rounded-full"></div>
+                </div>
             </div>
 
-            <!-- Question Area -->
-            <div id="question-area" class="mb-8">
-                <h2 id="question-text" class="text-2xl font-semibold text-gray-900 leading-relaxed"></h2>
+            <div class="p-6 md:p-10">
+                <!-- Question Area -->
+                <div id="question-area" class="mb-8">
+                    <h2 id="question-text" class="text-2xl font-semibold text-gray-900 leading-relaxed"></h2>
+                </div>
+
+                <!-- Options Area -->
+                <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Option buttons will be injected here by JavaScript -->
+                </div>
             </div>
 
-            <!-- Options Area -->
-            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Option buttons will be injected here by JavaScript -->
-            </div>
+            <!-- Footer: Navigation Buttons -->
+            <div id="footer" class="p-6 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <button id="prev-btn" class="nav-btn bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold text-lg shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 transition duration-300 w-full sm:w-auto">
+                    السابق
+                </button>
 
-            <!-- Footer: Next Button -->
-            <div id="footer" class="mt-8 text-left"> <!-- text-left is "end" in RTL -->
-                <button id="next-btn" class="hidden bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold text-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition duration-300">
-                    السؤال التالي
+                <button id="modal-open-btn" class="bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold text-lg shadow-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 transition duration-300 w-full sm:w-auto">
+                    عرض كل الأسئلة
+                </button>
+
+                <button id="next-btn" class="nav-btn bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold text-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 w-full sm:w-auto">
+                    التالي
                 </button>
             </div>
         </div>
@@ -79,14 +112,44 @@
         </div>
     </div>
 
+    <!-- Question Navigator Modal -->
+    <div id="question-modal" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <!-- Modal Overlay -->
+            <div id="modal-overlay" class="fixed inset-0 bg-black opacity-50"></div>
+
+            <!-- Modal Content -->
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl z-10 p-6">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">تصفح الأسئلة</h3>
+                    <button id="modal-close-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+                </div>
+
+                <!-- Modal Status -->
+                <div class="flex flex-col sm:flex-row justify-around items-center mb-6 p-4 bg-gray-50 rounded-lg gap-4">
+                    <div id="attempted-count-text" class="text-lg font-bold text-blue-600"></div>
+                    <div id="correct-count-text" class="text-lg font-bold text-green-600"></div>
+                    <div id="incorrect-count-text" class="text-lg font-bold text-red-600"></div>
+                </div>
+
+                <!-- Modal Question Grid -->
+                <div id="question-grid" class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-3">
+                    <!-- Question numbers will be injected here by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script>
         // --- Data Extracted from PDFs ---
-        // Based on the instruction: "the answer is the first option in the pdf"
+        // (Cleaned and consolidated data)
         const allQuestions = [
             // From ALB7A17R_NAQD VAL AROOL0.pdf
             { question: "ليس من معنى النقد في اللغة", answer: "الإشفاق", options: ["الإشفاق", "تمييز الجيد من الرديء", "الانتقاض", "الإعطاء العاجل"] },
             { question: "تحليل القطع الأدبية وتقدير ما لها من قيمة فنية", answer: "النقد", options: ["النقد", "العروض", "البحر", "القافية"] },
-            { question: "كان للنقد في الجاهلية أحكام عامة تتناول", answer: "كلها صحيح", options: ["كلها صحيح", "الشاعر من حيث منهجه الشعري في أسلوب", "الحكم عليه من حيث إجادته في غرض أكثر من إجادته في غرض آخر", "المبالغة"] },
+            { question: "كان للنقد في الجahلية أحكام عامة تتناول", answer: "كلها صحيح", options: ["كلها صحيح", "الشاعر من حيث منهجه الشعري في أسلوب", "الحكم عليه من حيث إجادته في غرض أكثر من إجادته في غرض آخر", "المبالغة"] },
             { question: "نما النقد في عصر بني أمية لعدة أسباب ليس منها", answer: "كثرة الشركة والصناع", options: ["كثرة الشركة والصناع", "وجود الأحزاب في دولة بني أمية", "ظهور العزل العفيف بجانب العزل الصريح", "التقاء الشعراء بعضهم مع بعض"] },
             { question: "ومن أبرز العوامل التي طورت النقد الأدبي في العصر العباسي", answer: "كلها صحيح", options: ["كلها صحيح", "حركة التجديد التي ظهرت في الشعر العربي", "أثر القرآن", "المعارك الأدبية المتعددة"] },
             { question: "وسيلة التعبير عن الإحساس الفني بأدواته", answer: "الأسلوب", options: ["الأسلوب", "النقد", "الشعر", "العروض"] },
@@ -157,7 +220,7 @@
             { question: "فقد أصبح ............ هو المثل الأعلى للأدباء والنقاد في العصر الإسلامي", answer: "القرآن", options: ["القرآن", "كتاب العين", "الأدب الكبير", "كتاب الشفاء"] },
             { question: ".......... كتاب تأويل مشكل القرآن ل", answer: "ابن قتيبة", options: ["ابن قتيبة", "آمدي", "خليل بن أحمد", "احمد شوقي"] },
             { question: "كتاب الوساطة بين المتنبي وخصومه", answer: "القاضي الجرجاني", options: ["القاضي الجرجاني", "ابن قتيبة", "أحمد شوقي", "شوقي ضيف"] },
-            { question: "من كان المعلم الحاكم في "" البديعيات""", answer: "القاضي الفاضل", options: ["القاضي الفاضل", "جاحظ", "طه حسين", "شوقي ضيف"] },
+            { question: "من كان المعلم الحاكم في البديعيات", answer: "القاضي الفاضل", options: ["القاضي الفاضل", "جاحظ", "طه حسين", "شوقي ضيف"] },
             { question: "...... كتاب النقد المنهجي عن العرب ل", answer: "دكتور مندور", options: ["دكتور مندور", "جاحظ", "عنترة", "بشار بن برد"] },
             { question: "تدخل عنصرا ثالثا في الأسلوب الأدبي .......", answer: "العاطفة", options: ["العاطفة", "الأفكار", "المعاني", "الخيالات"] },
             { question: "هو أوعية المعاني والقوالب التي تصاغ فيها للأفكار", answer: "التعبير", options: ["التعبير", "الحل", "الخيال", "المعاني"] },
@@ -206,7 +269,7 @@
             { question: "قال بعض العلماء بني الشعر على أربعة أركان هي:", answer: "المدح والهجاء والنسيب والرثاء", options: ["المدح والهجاء والنسيب والرثاء", "المدح والغزل النسيب والرثاء", "الهجاء والغزل والنسيب والرثاء", "الرثاء والنسيبوالمدح والغزل"] },
             { question: "اختر الشارد المقومات الفنية للشعر في العصر الحديث", answer: "التجهزة الخيالية", options: ["التجهزة الخيالية", "التجربة الشعرية", "الوحدة العضوية", "الصورة التعبيرية"] },
             { question: "من الشاعر القصيدة 'رسائل محترقة'؟", answer: "إبراهيم ناجي", options: ["إبراهيم ناجي", "الحريري", "المعري", "شوقي ضيف"] },
-            { question: "يا طالب الدنيا الدنية إنها  شرك الردى وقرارة الأكدار' اختر الصحيح من اللآتي'", answer: "هذا الشعر مثال الاختلاف الحقيقة الواحدة باختلاف نظرة الشعراء", options: ["هذا الشعر مثال الاختلاف الحقيقة الواحدة باختلاف نظرة الشعراء", "قال الشعر الحريري في غرض نفسه", "هذا الشعر مثالالاختلاف الحقيقةالواحدة باختلاف حال الشاعر", "قال الشعر المعري في تصوير ""حقيقة الدنيا"""] },
+            { question: "يا طالب الدنيا الدنية إنها  شرك الردى وقرارة الأكدار' اختر الصحيح من اللآتي'", answer: "هذا الشعر مثال الاختلاف الحقيقة الواحدة باختلاف نظرة الشعراء", options: ["هذا الشعر مثال الاختلاف الحقيقة الواحدة باختلاف نظرة الشعراء", "قال الشعر الحريري في غرض نفسه", "هذا الشعر مثالالاختلاف الحقيقةالواحدة باختلاف حال الشاعر", "قال الشعر المعري في تصوير حقيقة الدنيا"] },
             { question: "........ معركة 'بينا' قامت بين", answer: "بروسيا وفرنسا", options: ["بروسيا وفرنسا", "الإسرئيل والفلسطين", "الخزرج وبني النضير", "المغرب وفرنسا"] },
             { question: ":تتكون الصورة التعبيرية من عنصرين هامين هما", answer: "الألفاظ والعبارات ثم الصور والأخيلة", options: ["الألفاظ والعبارات ثم الصور والأخيلة", "الدلائل والصراحات ثم الصور والأخيلة", "المقادير والمقاييس ثم الدلائل والصراحات", "الألفاظ والعبارات ثم المقاييس والمقادير"] },
             { question: "أداة الشاعر", answer: "اللفظ المعبر والكلمة الموحية", options: ["اللفظ المعبر والكلمة الموحية", "الألوان والظلال", "الإيقاع الجميل", "النعمة الحالمة"] },
@@ -234,7 +297,7 @@
             { question: "................ المقطع المكون من حرفين يسمى", answer: "سببا", options: ["سببا", "وتدا", "علة", "زحافا"] },
             { question: "............ مستفعلن فاعلن مستفعلن فعلن : هذا", answer: "البحر البسيط", options: ["البحر البسيط", "البحر الطويل", "البحر المديد", "البحر الهزج"] },
             { question: "............. زاد الأخفش على بحور الشعر التي وضعها الخليل بحرا واحدا يسمى", answer: "بحر المتدارك", options: ["بحر المتدارك", "البحر الطويل", "البحر الأخفشي", "البحر الزيادي"] },
-            { question: "اختر الخطأ", answer: "'يسمى آخر الشطر الأول 'السبب", options: ["'يسمى آخر الشطر الأول 'السبب'", "يسمى الشطر الأول 'الصدر'", "يسمى الشطر الثاني 'العجز'", "يسمى آخر شطر الثاني 'الضرب"] },
+            { question: "اختر الخطأ", answer: "'يسمى آخر الشطر الأول 'السبب'", options: ["'يسمى آخر الشطر الأول 'السبب'", "يسمى الشطر الأول 'الصدر'", "يسمى الشطر الثاني 'العجز'", "يسمى آخر شطر الثاني 'الضرب"] },
             { question: ":الموسيقى الداخلية ضربان، وهما:", answer: "واضحة وخفية", options: ["واضحة وخفية", "ظاهرة وخفية", "حاجزة وظاهرة", "ظاهرة ومقسمة"] },
             { question: "اختر الشارد", answer: "الشعر الغزلي", options: ["الشعر الغنائي", "الشعر الملحمي", "الشعر المسرحي" , "الشعر الغزلي"] },
             { question: "ومن سمات هذا الشعر ألا تزيد القصيدة على مائة بيت غالبا - ما المراد ب 'هذا الشعر'؟", answer: "الشعر الغنائي", options: ["الشعر الغنائي", "الشعر الملحمي", "الشعر المسرحي", "الشعر النثري"] },
@@ -251,7 +314,7 @@
             { question: "هو أثر النشاط الوجداني في نفس الأديب، ما هو ؟", answer: "الخيال", options: ["الخيال", "المعاني", "التعبير", "التحليل"] },
             { question: "اختر الشارد أنواع النثر", answer: "الشعر", options: ["الشعر", "قصة", "مقالة", "رسالة"] },
             { question: "........... الرسائل الرسمية تسمى أيضا", answer: "الرسائل العامة أو الديوانية", options: ["الرسائل العامة أو الديوانية", "الرسائل العامة أو الخاصة", "الرسائل الخاصة أو الأهلية", "الرسائل الخاصة أو الديوانية"] },
-            { question: "سلام الله عليك، فإني أحمد إليك الله الذي لا إله إلا هو، أما بعد فقد عجبت من كثرة كتبي إليك في إبطائك بالخراج' من الكاتب والمكتوب؟'", answer: "من عمر بن الخطاب إلى عمرو بن العاص", options: ["من عمر بن الخطاب إلى عمرو بن العاص", "من عمر بن الخطاب إلى معاوية", "من علي إلى معاوية", "من علي إلى عمرو بن العاص"] },
+            { question: "سلام الله عليك، فإني أحمد إليك الله الذي لا إله إلا هو، أما بعد فقد عجبت من كثرة كتبي إليك في إبطائك بالخراج' من الكاتب والمكتوب؟'", answer: "من عمر بن الخطاب إلى عمرو بن العاص", options: ["من عمر بن الخطاب إلى عمرو بن العاص", "من عمر بن الخطاب إلى معاويb", "من علي إلى معاوية", "من علي إلى عمرو بن العاص"] },
             { question: "هدف هذا الطراز من الرسائل هو التعبير عن الوجدان والتأثير في نفس من يكتب إليهم' ما المراد هنا ب 'هذا الطراز'؟'", answer: "الرسائل الإخوانية", options: ["الرسائل الإخوانية", "الرسائل العامة", "الرسائل الرسمية", "الرسائل الديوانية"] },
             { question: "اختر الشارد : المقالة بوجه عام ينبغي أن تقوم على عناصر أساسية", answer: "الخيال", options: ["الخيال", "المادة", "الخطة", "التعبير"] },
             { question: "هي ثمرة المقالة وعندها يحسن السكوت", answer: "الخاتمة", options: ["الخاتمة", "المقدمة", "العرض", "المادة"] },
@@ -275,18 +338,34 @@
         const optionsContainer = document.getElementById('options-container');
         const progressText = document.getElementById('progress');
         const nextButton = document.getElementById('next-btn');
+        const prevButton = document.getElementById('prev-btn');
         const restartButton = document.getElementById('restart-btn');
         const scoreText = document.getElementById('score-text');
+
+        // Modal Elements
+        const modal = document.getElementById('question-modal');
+        const modalOpenBtn = document.getElementById('modal-open-btn');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const questionGrid = document.getElementById('question-grid');
+        const attemptedCountEl = document.getElementById('attempted-count-text');
+        const correctCountEl = document.getElementById('correct-count-text');
+        const incorrectCountEl = document.getElementById('incorrect-count-text');
 
         // --- Quiz State ---
         let shuffledQuestions = [];
         let currentQuestionIndex = 0;
-        let score = 0;
 
         // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', startGame);
-        nextButton.addEventListener('click', handleNextButton);
+        nextButton.addEventListener('click', handleNext);
+        prevButton.addEventListener('click', handlePrevious);
         restartButton.addEventListener('click', startGame);
+
+        // Modal Listeners
+        modalOpenBtn.addEventListener('click', openModal);
+        modalCloseBtn.addEventListener('click', closeModal);
+        modalOverlay.addEventListener('click', closeModal);
 
         // --- Helper Function: Shuffle an array (Fisher-Yates) ---
         function shuffleArray(array) {
@@ -302,102 +381,207 @@
          * Starts or restarts the quiz.
          */
         function startGame() {
-            score = 0;
             currentQuestionIndex = 0;
             // Shuffle the questions for a new game
-            shuffledQuestions = [...allQuestions];
-            shuffleArray(shuffledQuestions);
+            shuffledQuestions = [...allQuestions].map(q => ({
+                ...q,
+                userAnswer: null, // Track selected answer
+                isCorrect: null,  // Track if the answer was correct
+                shuffledOptions: [...q.options] // Store a shuffled version for consistency
+            }));
+
+            shuffledQuestions.forEach(q => shuffleArray(q.shuffledOptions)); // Shuffle options for each question
+            shuffleArray(shuffledQuestions); // Shuffle the question order
 
             // Reset UI
             resultContainer.classList.add('hidden');
             quizContainer.classList.remove('hidden');
-            nextButton.classList.add('hidden');
 
-            showQuestion();
+            renderQuestion(currentQuestionIndex);
         }
 
         /**
-         * Displays the current question and options.
+         * Renders the question for the given index.
          */
-        function showQuestion() {
-            resetState();
-            const currentQuestion = shuffledQuestions[currentQuestionIndex];
+        function renderQuestion(index) {
+            currentQuestionIndex = index;
+            const currentQuestion = shuffledQuestions[index];
+
+            // Clear old options
+            optionsContainer.innerHTML = '';
 
             // Display question text
             questionText.textContent = currentQuestion.question;
 
             // Display progress
-            progressText.textContent = `سؤال ${currentQuestionIndex + 1} / ${shuffledQuestions.length}`;
+            progressText.textContent = `سؤال ${index + 1} / ${shuffledQuestions.length}`;
 
-            // Shuffle options for the current question
-            const options = [...currentQuestion.options];
-            shuffleArray(options);
+            // Get the consistently shuffled options
+            const options = currentQuestion.shuffledOptions;
 
             // Create and display option buttons
             options.forEach(option => {
                 const button = document.createElement('button');
                 button.textContent = option;
+                // Base classes
                 button.className = "option-btn w-full p-4 text-lg text-gray-800 bg-gray-50 rounded-lg border-2 border-gray-200 hover:bg-gray-100 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300 text-right";
-                
-                button.addEventListener('click', () => selectAnswer(button, option, currentQuestion.answer));
+
+                button.addEventListener('click', () => selectAnswer(option));
+
+                // If this question has been answered, show the feedback
+                if (currentQuestion.userAnswer !== null) {
+                    button.disabled = true;
+                    if (option === currentQuestion.answer) {
+                        button.classList.add('correct-answer');
+                    }
+                    if (option === currentQuestion.userAnswer && currentQuestion.isCorrect === false) {
+                        button.classList.add('incorrect-answer');
+                    }
+                }
+
                 optionsContainer.appendChild(button);
             });
+
+            // Update navigation buttons
+            updateNavButtons();
         }
 
         /**
-         * Resets the state for the next question.
+         * Updates the state of the Previous and Next/Submit buttons.
          */
-        function resetState() {
-            nextButton.classList.add('hidden');
-            while (optionsContainer.firstChild) {
-                optionsContainer.removeChild(optionsContainer.firstChild);
+        function updateNavButtons() {
+            prevButton.disabled = (currentQuestionIndex === 0);
+
+            if (currentQuestionIndex === shuffledQuestions.length - 1) {
+                // Last question
+                nextButton.textContent = 'إرسال';
+                nextButton.onclick = showResults; // Change click handler
+            } else {
+                // Not the last question
+                nextButton.textContent = 'التالي';
+                nextButton.onclick = handleNext; // Default click handler
             }
         }
 
         /**
          * Handles the user's answer selection.
          */
-        function selectAnswer(selectedButton, selectedOption, correctAnswer) {
-            // Disable all buttons
-            Array.from(optionsContainer.children).forEach(button => {
-                button.disabled = true;
-                // Check if this button is the correct answer
-                if (button.textContent === correctAnswer) {
-                    button.classList.add('correct-answer');
-                }
-            });
+        function selectAnswer(selectedOption) {
+            const currentQuestion = shuffledQuestions[currentQuestionIndex];
 
-            // Mark the selected button as correct or incorrect
-            if (selectedOption === correctAnswer) {
-                score++;
-                selectedButton.classList.add('correct-answer');
-            } else {
-                selectedButton.classList.add('incorrect-answer');
+            // Only process if the question hasn't been answered yet
+            if (currentQuestion.userAnswer !== null) {
+                return;
             }
 
-            // Show the "Next" button
-            nextButton.classList.remove('hidden');
+            // Store the user's answer
+            currentQuestion.userAnswer = selectedOption;
+            const isCorrect = (selectedOption === currentQuestion.answer);
+            currentQuestion.isCorrect = isCorrect;
+
+            // Show feedback on all buttons
+            const allOptionButtons = Array.from(optionsContainer.children);
+            allOptionButtons.forEach(btn => {
+                btn.disabled = true;
+                if (btn.textContent === currentQuestion.answer) {
+                    btn.classList.add('correct-answer');
+                }
+                if (btn.textContent === selectedOption && !isCorrect) {
+                    btn.classList.add('incorrect-answer');
+                }
+            });
         }
 
         /**
          * Handles the "Next" button click.
          */
-        function handleNextButton() {
-            currentQuestionIndex++;
-            if (currentQuestionIndex < shuffledQuestions.length) {
-                showQuestion();
-            } else {
-                showResults();
+        function handleNext() {
+            if (currentQuestionIndex < shuffledQuestions.length - 1) {
+                renderQuestion(currentQuestionIndex + 1);
             }
         }
 
         /**
-         * Displays the final results.
+         * Handles the "Previous" button click.
+         */
+         function handlePrevious() {
+            if (currentQuestionIndex > 0) {
+                renderQuestion(currentQuestionIndex - 1);
+            }
+        }
+
+        /**
+         * Calculates the score and displays the final results.
          */
         function showResults() {
+            // Calculate score
+            let finalScore = 0;
+            shuffledQuestions.forEach(q => {
+                if (q.isCorrect === true) {
+                    finalScore++;
+                }
+            });
+
+            // Display results
             quizContainer.classList.add('hidden');
             resultContainer.classList.remove('hidden');
-            scoreText.textContent = `نتيجتك هي ${score} من ${shuffledQuestions.length}`;
+            scoreText.textContent = `نتيجتك هي ${finalScore} من ${shuffledQuestions.length}`;
+        }
+
+        // --- Modal Functions ---
+
+        /**
+         * Opens the question navigation modal.
+         */
+        function openModal() {
+            let attempted = 0;
+            let correct = 0;
+            questionGrid.innerHTML = ''; // Clear old grid
+
+            shuffledQuestions.forEach((question, index) => {
+                const qButton = document.createElement('button');
+                qButton.textContent = index + 1;
+                qButton.className = "w-12 h-12 flex items-center justify-center rounded-full font-semibold text-lg transition duration-300 hover:opacity-80";
+
+                if (question.userAnswer === null) {
+                    qButton.classList.add('q-unattempted');
+                } else {
+                    attempted++;
+                    if (question.isCorrect) {
+                        qButton.classList.add('q-correct');
+                        correct++;
+                    } else {
+                        qButton.classList.add('q-incorrect');
+                    }
+                }
+
+                qButton.addEventListener('click', () => {
+                    navigateToQuestion(index);
+                });
+                questionGrid.appendChild(qButton);
+            });
+
+            // Update stats
+            attemptedCountEl.textContent = `تمت الإجابة: ${attempted}`;
+            correctCountEl.textContent = `صحيحة: ${correct}`;
+            incorrectCountEl.textContent = `خاطئة: ${attempted - correct}`;
+
+            modal.classList.remove('hidden');
+        }
+
+        /**
+         * Closes the question navigation modal.
+         */
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        /**
+         * Navigates to a specific question from the modal.
+         */
+        function navigateToQuestion(index) {
+            renderQuestion(index);
+            closeModal();
         }
 
     </script>
